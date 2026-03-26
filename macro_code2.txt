@@ -1,0 +1,436 @@
+Const swDocPART = 1
+Const swDocASSEMBLY = 2
+Const swDocDRAWING = 3
+
+Dim swApp As Object
+Dim lightweightPartNames() As String
+Dim suppressedPartNames() As String
+Dim exportedPartNames() As String
+Dim ModelType
+
+Private Sub Cancel_Click()
+
+Me.Hide
+
+End Sub
+
+Private Sub CommandButton1_Click()
+
+MsgBox ("Library : save into the predefined directory, " & vbCrLf & "Current : save into the same folder that the opened part" & vbCrLf & "Please pay attention that the path should NOT finish with a ' \ ' ")
+'MsgBox ("Please pay attention that the path should NOT finish with a ' \ ' ")
+
+End Sub
+
+Private Sub compName_Click()
+
+End Sub
+
+Public Sub Ok_Click()
+Dim Model As ModelDoc2
+Dim Ok As Boolean
+Dim i As Integer
+Dim TopName, TopNamee, TopNameee, TopNameLaenge, VglString As String
+Dim FullName, Source, Destination As String
+Dim Action As String
+Dim messages As String
+
+Const swTiffScreenOrPrintCapture = 6
+Const swTiffImageType = 7
+Const swTiffCompressionScheme = 8
+Const swTiffPrintDPI = 9
+Const swTiffPrintPaperSize = 10
+Const swTiffPrintScaleFactor = 11
+
+Set swApp = CreateObject("SldWorks.Application")
+Set Model = swApp.ActiveDoc
+ModelType = Model.GetType
+Path = JobSelect.Path
+Action = ""
+
+If Path = "" Then
+    MsgBox ("Please enter a destination path")
+    GoTo err1
+Else
+    If Dir(Path, vbDirectory) = "" Then
+        MkDir Path
+    End If
+End If
+    
+If ModelType = swDocASSEMBLY Or ModelType = swDocPART Then
+    If JobSelect.STEP = False And JobSelect.Para = False And JobSelect.STL = False Then
+        MsgBox ("Please select an ouput type")
+        GoTo err1
+    End If
+Else
+    '2D component
+    If JobSelect.PDF = False And JobSelect.DXF = False And JobSelect.DWG = False Then
+        MsgBox ("Please select an ouput type")
+        GoTo err1
+    End If
+End If
+      
+If ModelType = swDocASSEMBLY Then
+    ReDim exportedPartNames(1)
+    ReDim lightweightPartNames(1)
+    ReDim suppressedPartNames(1)
+    
+    ' Ask if user wants to export the entire assembly as 3D
+    Dim exportAsm As Integer
+    exportAsm = MsgBox("Would you like to export the entire assembly as a 3D file (STEP, STL, X_T)?", vbYesNo + vbQuestion, "Export Assembly")
+    
+    If exportAsm = vbYes Then
+        Call handle3D(Model, False) ' Export the assembly itself
+    End If
+    
+    ' Then process individual parts
+    Call traverseAssembly(Model)
+
+ElseIf ModelType = swDocPART Then
+    Call handle3D(Model, False)
+Else
+    Call handle2D(Model)
+End If
+Call cleanup(messages)
+
+Exit Sub
+
+err1:
+
+End Sub
+
+'Sub traverseAssembly(swComp As SldWorks.Component2)
+Sub traverseAssembly(Model As ModelDoc2)
+    'this recursively traverses all of the components in an assembly
+    Dim vChildComp                  As Variant
+    Dim swChildComp                 As SldWorks.Component2
+    Dim i                           As Long
+    Dim childlevel                  As Long
+    Dim childlevel_temp             As Long
+    Dim ModName                     As String
+    Dim ModType As Integer
+    Dim childDoc As ModelDoc2
+    Dim swRootComp As SldWorks.Component2
+    Dim swConf As SldWorks.Configuration
+    Dim confirmResponse As Integer
+    Dim suppressionState As Integer
+    
+    Set swConf = Model.GetActiveConfiguration
+    Set swRootComp = swConf.GetRootComponent
+    vChildComp = swRootComp.GetChildren
+
+    For i = 0 To UBound(vChildComp)
+        ModType = 0
+        Set swChildComp = vChildComp(i)
+        suppressionState = swChildComp.GetSuppression2()
+        If suppressionState <> swComponentFullyResolved Then
+            handleNonResolvedComp swChildComp
+        Else
+            Set childDoc = swChildComp.GetModelDoc2
+            ModName = childDoc.GetTitle
+            If Not (childDoc Is Nothing) Then
+                ModType = childDoc.GetType()
+            End If
+            If ModType = swDocASSEMBLY Then
+                'recursive
+                Call traverseAssembly(childDoc)
+            ElseIf ModType = swDocPART Then
+                If IsInArray(ModName, exportedPartNames) Then
+                    MsgBox ("skipping additional instance of " & ModName)
+                Else
+                    exportedPartNames(UBound(exportedPartNames)) = ModName
+                    ReDim Preserve exportedPartNames(UBound(exportedPartNames) + 1)
+                    confirmResponse = MsgBox("Export " + ModName + "?", vbYesNo)
+                    If confirmResponse = vbYes Then
+                        Call handle3D(childDoc, True)
+                    End If
+                End If
+            Else
+                MsgBox ("unexpected document type - aborting")
+                Exit Sub
+            End If
+        End If
+    Next i
+End Sub
+
+
+Private Sub handle3D(Model As ModelDoc2, isPartOfAssembly As Boolean)
+Dim objName As String
+
+' Get the document title
+Let TopName = Model.GetTitle
+Let TopNamee = Model.extension.CustomPropertyManager(confName).Get("Revision")
+Let TopNameee = Model.extension.CustomPropertyManager(confName).Get("Description")
+Let extensionIdx = 0
+TopNameLaenge = Len(TopName)
+' Get the filename without extension (ObjName)
+extensionIdx = InStr(1, TopName, ".", vbTextCompare)
+If extensionIdx > 1 Then
+    'objName = Left(TopName, TopNameLaenge - 7)
+    objName = Left(TopName, extensionIdx - 1)
+Else
+    objName = TopName
+End If
+If JobSelect.STEP Then
+    ' Model in step Format abspeichern
+    FullName = setupFullName(objName, TopNamee, TopNameee, "step")
+    On Error GoTo err2
+    'Model.SaveAs2 FullName, 0, True, True
+    saveAs Model, FullName
+    Action = Action & "STEP "
+End If
+If JobSelect.STL Then
+    Dim tempPart As ModelDoc2
+    ' Model in STL Format abspeichern
+    FullName = setupFullName(objName, TopNamee, TopNameee, "stl")
+    On Error GoTo err2
+    'Model.SaveAs2 FullName, 0, True, True
+    
+    Rem for whatever reason, STLs require special handling when the part is in an assembly
+    If isPartOfAssembly = True Then
+        Call openPart(Model)
+        Set tempPart = swApp.ActiveDoc
+        saveAs tempPart, FullName
+        Action = Action & "STL "
+        Call closePart(Model.GetTitle)
+    Else
+        saveAs Model, FullName
+    End If
+End If
+
+If JobSelect.Para Then
+    FullName = setupFullName(objName, TopNamee, TopNameee, "x_t")
+    On Error GoTo err2
+    'Model.SaveAs2 FullName, 0, True, True
+    saveAs Model, FullName
+    Action = Action & "X_t "
+End If
+
+Exit Sub
+
+err2:
+MsgBox ("An error occurred in the creation, please check manually")
+
+End Sub
+
+Private Sub handle2D(Model As ModelDoc2)
+Dim objName As String
+'get part properties
+Call PDF_PROP1.main
+' Get the document title - PDF
+Let TopName = Model.extension.CustomPropertyManager(confName).Get("PartNo")
+Let TopNamee = Model.extension.CustomPropertyManager(confName).Get("Revision")
+Let TopNameee = Model.extension.CustomPropertyManager(confName).Get("Description")
+Let extensionIdx = 0
+TopNameLaenge = Len(TopName)
+' Get the filename without extension (ObjName)
+' If InStr(1, ".", TopName, vbTextCompare) Then
+extensionIdx = InStr(1, TopName, ".", vbTextCompare)
+If extensionIdx > 1 Then
+    'objName = Left(TopName, TopNameLaenge - 7)
+    objName = Left(TopName, extensionIdx - 1)
+Else
+    objName = TopName
+End If
+ If JobSelect.DXF Then
+    ' Model in dxf-Format
+    'set up full name
+    FullName = setupFullName(objName, TopNamee, TopNameee, "dxf")
+    Set Sheet = Model.GetCurrentSheet()
+    PaperSize = Sheet.GetProperties()(0)
+    On Error GoTo err2
+    'Model.SaveAs2 FullName, 0, True, True
+    saveAs Model, FullName
+    
+    Action = Action & "DXF "
+End If
+
+If JobSelect.PDF Then
+    ' Model in pdf-Format abspeichern
+    'set up full name
+    FullName = setupFullName(objName, TopNamee, TopNameee, "pdf")
+    Set Sheet = Model.GetCurrentSheet()
+    PaperSize = Sheet.GetProperties()(0)
+    On Error GoTo err2
+    'Model.SaveAs2 FullName, 0, True, True
+    saveAs Model, FullName
+    Action = Action & "PDF "
+End If
+
+If JobSelect.DWG Then
+    ' Model in dwg-Format abspeichern
+    'set up full name
+    FullName = setupFullName(objName, TopNamee, TopNameee, "dwg")
+    Set Sheet = Model.GetCurrentSheet()
+    PaperSize = Sheet.GetProperties()(0)
+    On Error GoTo err2
+    'Model.SaveAs2 FullName, 0, True, True
+    saveAs Model, FullName
+    Action = Action & "DWG "
+End If
+
+Exit Sub
+
+err2:
+MsgBox ("An error occurred in the creation, please check manually")
+
+End Sub
+
+Private Function IsInArray(stringToBeFound As String, arr As Variant) As Boolean
+    IsInArray = (UBound(Filter(arr, stringToBeFound)) > -1)
+End Function
+
+Private Function handleNonResolvedComp(comp As SldWorks.Component2)
+    Dim status As Integer
+    status = comp.GetSuppression2
+    If status = swComponentLightweight Or status = swComponentFullyLightweight Then
+        lightweightPartNames(UBound(lightweightPartNames)) = comp.Name2
+        ReDim Preserve lightweightPartNames(UBound(lightweightPartNames) + 1)
+    ElseIf status <> swComponentFullyResolved Then
+        suppressedPartNames(UBound(suppressedPartNames)) = comp.Name2
+        ReDim Preserve suppressedPartNames(UBound(suppressedPartNames) + 1)
+    End If
+End Function
+
+Function openPart(Model As ModelDoc2)
+Dim pathName As String
+Dim nRetval As Long
+  
+pathName = Model.GetPathName
+'Debug.Print (pathName)
+Set swCompModel = swApp.ActivateDoc2(pathName, False, nRetval)
+End Function
+
+Function closePart(partName As String)
+    'Debug.Print ("closing " & partName)
+    swApp.CloseDoc (partName)
+End Function
+
+Function saveAs(Model, FullName)
+    Model.SaveAs2 FullName, 0, True, False
+End Function
+
+Function setupFullName(ByVal objName As Variant, ByVal TopNamee As Variant, ByVal TopNameee As Variant, ByVal extension As Variant) As String
+    Dim theFullName As String
+    Dim fileName As String
+
+    ' Build filename: [PartNo]-Rev [Revision]-[Description].[extension]
+    fileName = objName & "-Rev " & TopNamee & "-" & TopNameee & "." & extension
+
+    If JobSelect.Sort Then
+        If Dir(Path & "\" & UCase(extension) & "\", vbDirectory) = "" Then
+            MkDir (Path & "\" & UCase(extension) & "\")
+        End If
+        theFullName = Path & "\" & UCase(extension) & "\" & fileName
+    Else
+        theFullName = Path & "\" & fileName
+    End If
+
+    setupFullName = theFullName
+End Function
+
+
+Function cleanup(messages As String)
+JobSelect.Hide
+If ModelType = swDocASSEMBLY Then
+    If UBound(lightweightPartNames) > 1 Then
+        messages = "The following lightweight parts were skipped:" & vbCrLf
+        For i = 1 To UBound(lightweightPartNames)
+            messages = messages & lightweightPartNames(i) & vbCrLf
+        Next i
+    End If
+    If UBound(suppressedPartNames) > 1 Then
+        If Len(messages) > 0 Then
+            messages = messages & vbCrLf
+        End If
+        messages = messages & "The following suppressed parts were skipped:" & vbCrLf
+        For k = 1 To UBound(suppressedPartNames)
+            messages = messages + suppressedPartNames(k) & vbCrLf
+        Next k
+    End If
+End If
+
+MsgBox ("Completed" & vbCrLf & vbCrLf & messages)
+End Function
+
+Rem no longer used.  replaced by Library_Click() and Current_Click()
+Public Sub ToggleDir_Click()
+
+Dim swApp As Object
+Dim Model As Object
+Set swApp = CreateObject("SldWorks.Application")
+Set Model = swApp.ActiveDoc
+
+Dim Fullpath As String
+'Dim Fullpathlgth As Integer
+'Dim DocName As String
+'Dim DocNamelgth As Integer
+'Dim Charkeep As Integer
+Dim lastPathSepIdx As Integer
+
+If ToggleDir Then
+    ToggleDir.Caption = "Current"
+    Fullpath = Model.GetPathName
+    'Debug.Print (Fullpath)
+    If Fullpath = "" Then
+        MsgBox ("Active folder not found ! Is the model saved?")
+        GoTo err3
+    End If
+    lastPathSepIdx = InStrRev(Fullpath, "\")
+    Path = Left(Fullpath, lastPathSepIdx - 1)
+'    DocNamelgth = Len(Model.GetTitle)
+'    Fullpathlgth = Len(Fullpath)
+'    If Fullpath = "" Then
+'        MsgBox ("Active folder not found ! Is the model saved?")
+'        GoTo err3
+'    End If
+'    Debug.Print (Fullpath)
+'    If Model3D Then
+'        'Charkeep = Fullpathlgth - DocNamelgth - 7
+'        Charkeep = Fullpathlgth - DocNamelgth
+'    Else
+'        Charkeep = Fullpathlgth - DocNamelgth + 2
+'    End If
+'    Path = Left(Fullpath, Charkeep)
+    
+    'Debug.Print (Path)
+Else
+
+err3:
+
+    ToggleDir.Caption = "Library"
+    ToggleDir.Value = False
+    Me.Path = "C:\Users\MikeMurray\Desktop\MJ-Export"
+    
+End If
+
+End Sub
+Rem end no longer used
+
+Private Sub Library_Click()
+    Me.Path = "C:\Users\MikeMurray\Desktop\MJ-Export"
+End Sub
+
+Private Sub Current_Click()
+Dim swApp As Object
+Dim Model As Object
+Dim Fullpath As String
+Dim lastPathSepIdx As Integer
+
+Set swApp = CreateObject("SldWorks.Application")
+Set Model = swApp.ActiveDoc
+Fullpath = Model.GetPathName
+'Debug.Print (Fullpath)
+If Fullpath = "" Then
+    MsgBox ("Active folder not found ! Is the model saved?")
+    GoTo err3
+End If
+lastPathSepIdx = InStrRev(Fullpath, "\")
+Path = Left(Fullpath, lastPathSepIdx - 1)
+'Me.Path = Left(Fullpath, lastPathSepIdx - 1)
+Exit Sub
+
+err3:
+    Me.Path = "C:\Users\MikeMurray\Desktop\MJ-Export"
+End Sub
+
+f
