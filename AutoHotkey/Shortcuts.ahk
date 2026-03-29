@@ -113,9 +113,9 @@ FindBestTeamsWindow() {
     return hwndFound
 }
 
-#F6 toggles mute
+;F6 toggles mic/mute
 F6::TeamsToggle("^+m")
-#Shift+F6 toggles camera
+;F6+Shift toggles camera
 ^F6::TeamsToggle("^+o")
 
 TeamsToggle(keys) {
