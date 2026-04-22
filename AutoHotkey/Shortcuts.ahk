@@ -23,14 +23,22 @@
 :*?:/*sqrt::√
 :*?:/*dot::⋅
 ::/*iec::IEC 60068-2-52 Method 7
-:*?:/*shut::bash sudo shutdown -h now
-:*?:/*log::journalctl -u rfid-lock.service -f
 :*:/*gm::mjm.murray@gmail.com
 :*:/*pro::PROTOTYPE ONLY: NOT FOR SERIES MANUFACTURE
 :*?:/*fn::$PRP:"SW-File Name"
 :*?:/*wm::WELD MATERIAL: ER80S-D2 OR ER90S-D2
+; :*?:/*H::
+; :*?:/*H::
+; :*?:/*H::
+; :*?:/*H::
 
-
+:*?:/*log::journalctl -u rfid-lock.service -f
+:*?:/*pykill::sudo killall python3
+:*?:/*pyopen::python3 servo_motor_rotation.py open
+:*?:/*pycdocs::cd ~/Documents/
+:*?:/*pyprocs::ps aux | grep python
+:*?:/*log::journalctl -u rfid-lock.service -f
+:*?:/*shut::bash sudo shutdown -h now
 ;-------RESTART SOLIDWORKS------
 
 #+w::RestartSolidWorks()
