@@ -13,9 +13,12 @@
 :*?:/*th::Θ
 :*?:/*tt::∴
 :*?:/*al::α
+:*?:/*x::×
 ::/*rd::site:reddit.com
-::/*ar::→
+:*?:/*ar::→
 ::/*s::SOLIDWORKS
+::sss::SOLIDWORKS
+::ssss::SOLIDWORKS Simulation
 ::/*ss::SOLIDWORKS Simulation
 :*?:/*tau::τ
 :*?:/*pi::π
@@ -23,22 +26,41 @@
 :*?:/*sqrt::√
 :*?:/*dot::⋅
 ::/*iec::IEC 60068-2-52 Method 7
+:*?:/*shut::bash sudo shutdown -h now
+:*?:/*log::journalctl -u rfid-lock.service -f
+:*?:/*roc::sudo systemctl restart rocker_servo_lock.service
 :*:/*gm::mjm.murray@gmail.com
 :*:/*pro::PROTOTYPE ONLY: NOT FOR SERIES MANUFACTURE
 :*?:/*fn::$PRP:"SW-File Name"
+:*?:/*bb::{Text}V1cV1negar!!&&
 :*?:/*wm::WELD MATERIAL: ER80S-D2 OR ER90S-D2
-; :*?:/*H::
-; :*?:/*H::
-; :*?:/*H::
-; :*?:/*H::
+:*?:/*fmpeg::ffmpeg -i recording.mkv -vn -c:a copy audio.m4a
 
+;------------PART NUMBERS-----------
+::/*crd::NE22P-0183
+::/*wld::NE22P-0186
+::/*asy::NE22A-0174
+::/*msw::NE22P-0118
+::/*msa::NE22A-0175
+::/*rew::NE25P-0187
+::/*rea::NE25A-0185
+
+;------------PYTHON-----------------
 :*?:/*log::journalctl -u rfid-lock.service -f
 :*?:/*pykill::sudo killall python3
 :*?:/*pyopen::python3 servo_motor_rotation.py open
 :*?:/*pycdocs::cd ~/Documents/
 :*?:/*pyprocs::ps aux | grep python
+:*?:/*pyreset::sudo systemctl restart rfid-escape
 :*?:/*log::journalctl -u rfid-lock.service -f
 :*?:/*shut::bash sudo shutdown -h now
+:*?:/*pyread::journalctl -u rfid-escape -f
+
+
+;-------SOLIDWORKS------
+::/*s::SOLIDWORKS
+::/*ss::SOLIDWORKS Simulation
+
 ;-------RESTART SOLIDWORKS------
 
 #+w::RestartSolidWorks()
@@ -68,11 +90,25 @@ RestartSolidWorks() {
         MsgBox "SolidWorks executable not found.`nCheck swPath in the script."
 }
 
+#+k::RestartSTAR()
+
+RestartSTAR() {
+    try {
+        ProcessClose("STAR.exe")
+    } catch {
+    }
+
+    try {
+        ProcessClose("NSTAR.exe")
+    } catch {
+    }
+}
+
 
 ;-------WORDS & SHORTCUTS-------
-#---------ENTER YOUR EMAIL--------------
-:*:/*e::YOUREMAIL@nevados.solar
+:*:/*e::mike.murray@nevados.solar
 :*:*/s::SOLIDWORKS
+:*?:/*mj::mjm.murray@gmail.com
 
 ;------NUMLOCK------------
 #SingleInstance Force
@@ -91,6 +127,11 @@ $NumLock::
     SendText("Nevados Engineering`nAttn: Mike Murray`n55 4th Street`nOakland, CA 94607")
 }
 ::/*ad::55 4th Street
+::/*aad::
+{
+    SendText("Michael Murray`n878 Shotwell St.`nGate Code C1789X`nSan Francisco, CA 94110")
+}
+::/*aaad::878 Shotwell St.
 ::/*z::94607
 
 ;---------- Teams mute/camera toggles -----------
