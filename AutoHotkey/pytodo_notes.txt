@@ -1,3 +1,0 @@
-
-sudo usermod -a -G dialout mike
-ls -l /dev/ttyUSB*

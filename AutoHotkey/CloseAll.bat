@@ -1,1 +1,0 @@
-powershell -command "Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.CloseMainWindow() | Out-Null }"
