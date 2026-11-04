@@ -1,0 +1,24 @@
+  1. Transcribe one specific file right now
+  powershell -ExecutionPolicy Bypass -File "C:\Users\MikeMurray\OneDrive - Nevados
+  Engineering\Meetings\.claude\transcribe.ps1" -Path "C:\Users\MikeMurray\OneDrive - Nevados
+  Engineering\Meetings\<your-file>.mp4"
+  Output lands as <your-file>.transcript.md next to it. Use -Model base for faster/lower quality, -Model large-v3 for
+  highest. Default is turbo.
+
+  2. Catch up on every untranscribed MP4 in the folder (runs the watcher once, processes all existing files, then keeps
+  running — Ctrl-C to stop)
+  powershell -ExecutionPolicy Bypass -File "C:\Users\MikeMurray\OneDrive - Nevados
+  Engineering\Meetings\.claude\watch.ps1"
+
+  3. Make it always-on (the scheduled task — runs at every logon, watches the folder forever)
+  $watch    = "C:\Users\MikeMurray\OneDrive - Nevados Engineering\Meetings\.claude\watch.ps1"
+  $action   = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -WindowStyle Hidden
+  -ExecutionPolicy Bypass -File `"$watch`""
+  $trigger  = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+  $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+  Register-ScheduledTask -TaskName 'NevadosMeetingTranscriber' -Action $action -Trigger $trigger -Settings $settings
+  -Force
+  Start-ScheduledTask -TaskName 'NevadosMeetingTranscriber'
+
+  For "just transcribe one and see if it works," use #1. For the "drop file → it just happens" behavior you originally
+  asked for, use #3 (one-time setup, then forget).
