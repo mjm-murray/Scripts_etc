@@ -252,7 +252,7 @@ runCloseAll() {
 
 ; --- Win + Shift + E ---
 #+e:: {
-    psScript := "C:\Users\MikeMurray\Documents\AutoHotkey\restart_explorer.ps1"
+    psScript := "C:\Users\mjmmu\Documents\Scripts_etc\AutoHotkey\restart_explorer.ps1"
     Run('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' psScript '"', , "Hide")
 }
 
