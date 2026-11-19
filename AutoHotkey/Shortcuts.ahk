@@ -11,17 +11,17 @@
 :*?:/*Csi::Σ
 :*?:/*mu::μ
 :*?:/*th::Θ
+:*?:/*nn::Michael Murray
 :*?:/*tt::∴
+:*?:/*uu::is:unread
 :*?:/*al::α
 :*?:/*pos::⌖
 :*?T:/*pp::b00L3an!!##
+:*?T:/*ff::Spindoctors00
 :*?:/*x::×
 ::/*rd::site:reddit.com
 :*?:/*ar::→
 ::/*s::SOLIDWORKS
-::sss::SOLIDWORKS
-::ssss::SOLIDWORKS Simulation
-::/*ss::SOLIDWORKS Simulation
 :*?:/*st::My resume, design portfolio, manufacturing experience, and employment timeline are all available on my website: https://mjm-murray.github.io/. The direct link to my resume is: https://mjm-murray.github.io/Resume-Michael_Murray.pdf.
 :*?:/*hy::Could you please let me know what city the position would be in and whether it's 5 days in office or if it's hybrid, what that entails?
 :*?:/*rel::I'm not interested in relocating at the moment, but thank you for reaching out.
@@ -107,7 +107,7 @@ RestartSTAR() {
 
 
 ;-------WORDS & SHORTCUTS-------
-:*:/*e::mjm.murray@gmail.com
+:*:/*e::mmurray@formenergy.com
 :*:*/s::SOLIDWORKS
 :*:/*mj::mjm.murray@gmail.com
 
@@ -254,6 +254,18 @@ runCloseAll() {
 #+e:: {
     psScript := "C:\Users\mjmmu\Documents\Scripts_etc\AutoHotkey\restart_explorer.ps1"
     Run('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' psScript '"', , "Hide")
+}
+
+;---------TOGGLE DEFAULT BROWSER------------
+; --- Win + Shift + B: switch default browser Brave <-> Chrome ---
+#+b:: {
+    ps1 := A_ScriptDir "\Toggle-DefaultBrowser.ps1"
+    if !FileExist(ps1) {
+        MsgBox "Could not find " ps1, "Error"
+        return
+    }
+    ; Only the PowerShell window is hidden; Settings must stay visible for UI Automation.
+    Run('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' ps1 '"', , "Hide")
 }
 
 
