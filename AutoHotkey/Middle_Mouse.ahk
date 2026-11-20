@@ -7,6 +7,6 @@ F4::{
 		MouseClick("Middle", 0, 0, 1, 0, "D") ; Hold middle button down
 	} else {
 		isMiddleDown := false
-		MouseClick("Middle", 0, 0, 1, 0, "U") : 
+		MouseClick("Middle", 0, 0, 1, 0, "U") ; Release middle button
 	}
 }
